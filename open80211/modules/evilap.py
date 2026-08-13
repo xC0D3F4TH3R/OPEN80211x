@@ -78,12 +78,14 @@ class EvilAP:
         """Write hostapd/dnsmasq configs into the session dir. Returns (hconf, dconf)."""
         hconf = CONFIG.session_dir / f"hostapd-{self.ssid}.conf"
         dconf = CONFIG.session_dir / f"dnsmasq-{self.ssid}.conf"
+        wpa_line = ("wpa=2\nwpa_passphrase=" + self.password
+                    if self.password else "wpa=0")
         hconf.write_text(f"""interface={self.iface}
 ssid={self.ssid}
 bssid={self.bssid}
 hw_mode=g
 channel={self.channel}
-{"wpa=2\nwpa_passphrase=" + self.password if self.password else "wpa=0"}
+{wpa_line}
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
