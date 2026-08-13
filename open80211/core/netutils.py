@@ -2,6 +2,8 @@
 Networking helpers: MAC/IP math, and the protocol DECODER used across
 the capture and MITM modules to make every packet human-readable.
 """
+from __future__ import annotations
+
 import re
 import socket
 import struct

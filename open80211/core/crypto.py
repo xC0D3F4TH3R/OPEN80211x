@@ -12,6 +12,8 @@ Implements, in pure Python (with optional pycryptodome acceleration):
 TKIP decryption is intentionally not re-implemented (deprecated cipher);
 TKIP networks can still be handshake-cracked and attacked via other modules.
 """
+from __future__ import annotations
+
 import hashlib
 import hmac
 import struct
