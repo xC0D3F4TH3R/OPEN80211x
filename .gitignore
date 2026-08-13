@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Session artifacts - NEVER commit captures, hashes, credentials, or reports
+results/
+*.pcap
+*.pcapng
+*.hccapx
+*.hc22000
+*.hcxtools
+hashes-*.txt
+wpa-sec*
+
+# MITM CA keys/certs - sensitive
+*.key
+*.crt
+mitm-ca/
+ca.key
+ca.crt
+
+# Misc
+.env
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+*.log

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q open80211 open80211.py
+
+      - name: Version banner
+        run: python open80211.py --version
+
+      - name: End-to-end test (handshake -> crack -> decrypt)
+        run: python test_end_to_end.py
+
+      - name: Advanced suite test (WEP / NTLMv2 / TLS CA / exports / report)
+        run: python test_advanced.py
