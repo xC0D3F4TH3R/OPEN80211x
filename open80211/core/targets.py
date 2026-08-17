@@ -9,6 +9,8 @@ menus into a *workflow*: you discover once, then attack from a picker.
 All data is persisted per-session to `results/session-<id>/targets.json`
 so an interrupted engagement can be resumed later.
 """
+from __future__ import annotations
+
 import json
 import time
 from pathlib import Path

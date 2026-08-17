@@ -7,6 +7,8 @@ chosen (or random) hardware vendor. Parsing `oui.txt` from
 https://standards-oui.ieee.org/oui/oui.txt is also supported when
 present on disk.
 """
+from __future__ import annotations
+
 import random
 import re
 from pathlib import Path
