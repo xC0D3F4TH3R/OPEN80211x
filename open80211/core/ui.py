@@ -187,3 +187,63 @@ def spinner(msg: str, work: Callable[[], Any], success: str = "") -> Any:
     if success:
         ok(success)
     return result
+
+
+# --------------------------------------------------------------------------
+# Professional workflow helpers
+# --------------------------------------------------------------------------
+
+def clipboard(text: str, label: str = "value") -> None:
+    """Copy text to the OS clipboard; works on Linux + Windows."""
+    try:
+        import subprocess
+        if sys.platform.startswith("linux"):
+            for tool in ("xclip", "xsel", "wl-copy"):
+                try:
+                    subprocess.run([tool, "-i"] if tool == "wl-copy" else [tool],
+                                   input=text.encode(), timeout=3,
+                                   capture_output=True)
+                    ok(f"{label} copied to clipboard")
+                    return
+                except Exception:
+                    continue
+            warn("Clipboard tool not found (install xclip/xsel/wl-copy).")
+        else:
+            subprocess.run(["clip"], input=text.encode(), check=True, timeout=3)
+            ok(f"{label} copied to clipboard")
+    except Exception:
+        warn("Clipboard copy failed.")
+
+
+def confirm_note_default(default: str, prompt: str = "Note to self") -> str:
+    """Quick note-taking with sensible default."""
+    return ask(prompt, default=default)
+
+
+def header_line(text: str) -> None:
+    console.print(f"[bold bright_blue]▸[/bold bright_blue] {text}", highlight=False)
+
+
+def live_hud(panels: List[Any], refresh: float = 0.5) -> "LiveStatus":
+    """Open a multi-panel live HUD. Returns LiveStatus; caller updates."""
+    from rich.console import Group
+    return LiveStatus(lambda: Group(*panels), refresh)
+
+
+def pick_from_list(title: str, items: List[str], prompt: str = "Select") -> int:
+    """
+    Numbered picker that returns 1-based index (0 = cancel). Render-first.
+    """
+    table = Table(title=f"[bold]{title}[/bold]", box=box.SIMPLE_HEAD,
+                  border_style="cyan", show_header=False, pad_edge=False)
+    for i, item in enumerate(items, 1):
+        table.add_row(f"[cyan]{i:>2}[/cyan]", str(item))
+    table.add_row(f"[dim]{'  '}[/dim]", "[dim]0) Cancel[/dim]")
+    console.print(table)
+    while True:
+        raw = Prompt.ask(f"  {prompt} ").strip().lower()
+        if raw in ("0", "q", ""):
+            return 0
+        if raw.isdigit() and 1 <= int(raw) <= len(items):
+            return int(raw)
+        console.print("[red]Invalid choice.[/red]")

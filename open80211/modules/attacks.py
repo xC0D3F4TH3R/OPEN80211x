@@ -17,6 +17,7 @@ from open80211.core import ui
 from open80211.core.config import CONFIG, check_platform
 from open80211.core import netutils as nu
 from open80211.core.interfaces import which
+from open80211.core.targets import TARGETS, pick_ap, log_event
 
 try:
     from scapy.all import sendp, RadioTap, Dot11, Dot11Beacon, Dot11Elt, Dot11ProbeReq, \
@@ -249,14 +250,22 @@ def attack_menu(iface: str) -> None:
         if choice == 0:
             return
         if choice == 1:
-            bssid = ui.ask("Target AP BSSID")
+            ap = pick_ap("Target AP for deauth") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
             n = ui.ask_int("Number of frames (0 = continuous)", default=50)
             deauth_flood(iface, bssid, count=n or 0)
+            log_event("attack", f"deauth flood on {bssid}")
         elif choice == 2:
-            bssid = ui.ask("Target AP BSSID")
+            ap = pick_ap("Target AP for deauth") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
             client = ui.ask("Target client MAC", default="ff:ff:ff:ff:ff:ff")
             n = ui.ask_int("Number of frames", default=50)
             deauth_flood(iface, bssid, client, n)
+            log_event("attack", f"targeted deauth {client} on {bssid}")
         elif choice == 3:
             ssids = ui.ask("Comma-separated SSIDs (blank = 10 random)").strip()
             if not ssids:
@@ -265,16 +274,23 @@ def attack_menu(iface: str) -> None:
                 ssids = [s.strip() for s in ssids.split(",")]
             n = ui.ask_int("Rounds", default=20)
             beacon_flood(iface, ssids, n)
+            log_event("attack", f"beacon flood ({len(ssids)} SSIDs)")
         elif choice == 4:
-            bssid = ui.ask("Target AP BSSID")
+            ap = pick_ap("Target AP") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
             n = ui.ask_int("Number of requests", default=200)
             assoc_flood(iface, bssid, n)
         elif choice == 5:
             n = ui.ask_int("Number of probes", default=200)
             probe_flood(iface, n)
         elif choice == 6:
-            bssid = ui.ask("Target AP BSSID")
-            ch = ui.ask_int("Channel", default=0)
+            ap = pick_ap("Target AP for WPS") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
+            ch = ui.ask_int("Channel", default=ap.get("channel", 0) if ap else 0)
             wps_attack(iface, bssid, ch)
         elif choice == 7:
             injection_test(iface)

@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open80211"
-version = "1.0.0"
-description = "Advanced wireless & network penetration testing suite (authorized use only)"
+version = "2.1.0"
+description = "Professional wireless & network penetration testing suite (authorized use only)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "open80211 contributors" }]
-keywords = ["wireless", "wifi", "pentest", "security", "wpa", "mitm", "802.11"]
+keywords = ["wireless", "wifi", "pentest", "security", "wpa", "mitm", "802.11",
+            "bluetooth", "ble", "cellular", "iot", "evil-twin"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -24,6 +25,21 @@ dependencies = [
     "psutil>=5.9.0",
     "pycryptodome>=3.19.0",
     "cryptography>=41.0.0",
+]
+# Optional but recommended for specific suites:
+#   pyserial  - Cellular/SIM AT console
+#   paho-mqtt - IoT MQTT enumeration
+#   bleak     - pure-Python BLE scanning
+#   paramiko  - SSH brute force
+#   impacket  - SMB brute force / NTLM
+[project.optional-dependencies]
+cellular = ["pyserial>=3.5"]
+iot = ["paho-mqtt>=1.6"]
+bluetooth = ["bleak>=0.19"]
+brute = ["paramiko>=3.0", "impacket>=0.11"]
+all = [
+    "pyserial>=3.5", "paho-mqtt>=1.6", "bleak>=0.19",
+    "paramiko>=3.0", "impacket>=0.11",
 ]
 
 [project.scripts]

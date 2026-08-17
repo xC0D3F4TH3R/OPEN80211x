@@ -120,4 +120,7 @@ def detect_tools() -> dict:
     return {t: which(t) for t in
             ["aircrack-ng", "aireplay-ng", "wpaclean", "hashcat", "reaver",
              "hostapd", "hostapd-mana", "dnsmasq", "bettercap", "responder",
-             "tcpdump", "iw", "airmon-ng", "hcxdumptool", "nmap", "freeradius"]}
+             "tcpdump", "iw", "airmon-ng", "hcxdumptool", "nmap", "freeradius",
+             "hcitool", "hciconfig", "sdptool", "l2ping", "rfcomm",
+             "bluetoothctl", "btmgmt", "grgsm_scanner", "kal",
+             "rtl_test", "gammu", "hydra", "ncrack"]}

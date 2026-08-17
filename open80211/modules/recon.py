@@ -14,6 +14,7 @@ from open80211.core import ui
 from open80211.core.config import CONFIG, check_platform
 from open80211.core import netutils as nu
 from open80211.core.interfaces import set_channel
+from open80211.core.targets import add_aps, add_clients, log_event
 
 try:
     from scapy.all import sniff, Dot11, Dot11Beacon, Dot11ProbeResp, Dot11ProbeReq, Dot11Elt, RadioTap
@@ -109,6 +110,8 @@ def scan_networks(iface: str, channels: list = None, dwell: float = 0.5,
             "clients_detected": list(a["clients"]), "times_seen": a["times"],
         })
     rows.sort(key=lambda r: -r["signal"])
+    add_aps(rows)
+    log_event("recon", f"AP scan: {len(rows)} networks")
     return rows
 
 
@@ -180,6 +183,8 @@ def scan_clients(iface: str, bssid: str = "", channel: int = 0,
                      "associated_to": c["associated_to"], "signal": c["signal"],
                      "last_seen": c["last_seen"]})
     rows.sort(key=lambda r: -r["signal"])
+    add_clients(rows)
+    log_event("recon", f"client scan: {len(rows)} devices")
     return rows
 
 

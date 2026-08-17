@@ -13,6 +13,7 @@ from open80211.core import ui
 from open80211.core.config import CONFIG, check_platform
 from open80211.core import crypto, netutils as nu
 from open80211.core.interfaces import set_channel, which
+from open80211.core.targets import TARGETS, pick_ap, add_cred, log_event
 
 try:
     from scapy.all import sniff, wrpcap, rdpcap, Dot11, RadioTap
@@ -178,6 +179,10 @@ def crack_menu(handshake_pcap: str = "") -> None:
         if found:
             ui.ok(f"PSK FOUND: {found}")
             CONFIG.save("cracked", {"ssid": ssid, "psk": found})
+            add_cred({"protocol": "WPA2-PSK", "data": f"{ssid}:{found}",
+                      "src": hs.get("ap_mac", "")})
+            log_event("crack", f"PSK {ssid} = {found}")
+            ui.clipboard(found, "PSK")
         else:
             ui.warn(f"No match after {count} passwords.")
     elif choice == 2:
@@ -278,16 +283,23 @@ def analysis_menu(iface: str) -> None:
         if choice == 0:
             return
         if choice == 1:
-            bssid = ui.ask("Target AP BSSID")
-            ssid = ui.ask("AP SSID")
-            ch = ui.ask_int("Channel", default=6)
+            ap = pick_ap("Target AP") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
+            ssid = ap.get("ssid", "") if ap else ui.ask("AP SSID")
+            ch = ap.get("channel", 6) if ap else ui.ask_int("Channel", default=6)
             timeout = ui.ask_int("Capture timeout (s)", default=45)
             deauth = ui.confirm("Force deauth to speed up handshake?", default=True)
-            capture_handshake(iface, bssid, ssid, ch, timeout, deauth)
+            p = capture_handshake(iface, bssid, ssid, ch, timeout, deauth)
+            log_event("capture", f"handshake {bssid} {ssid}")
         elif choice == 2:
-            bssid = ui.ask("Target AP BSSID")
-            ssid = ui.ask("AP SSID")
-            ch = ui.ask_int("Channel", default=6)
+            ap = pick_ap("Target AP") if TARGETS.aps else None
+            bssid = ap["bssid"] if ap else ui.ask("Target AP BSSID")
+            if not bssid:
+                continue
+            ssid = ap.get("ssid", "") if ap else ui.ask("AP SSID")
+            ch = ap.get("channel", 6) if ap else ui.ask_int("Channel", default=6)
             timeout = ui.ask_int("Capture timeout (s)", default=45)
             deauth = ui.confirm("Deauth a client to force re-association?", default=True)
             capture_pmkid(iface, bssid, ssid, ch, timeout, deauth)

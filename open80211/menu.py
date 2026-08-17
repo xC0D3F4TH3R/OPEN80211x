@@ -1,5 +1,18 @@
 """
 Interactive main menu - the face of the suite.
+
+Professional workflow, not a menu zoo. The Engagement Console is the
+cockpit: it chains the killchains (scan -> attack -> crack -> report)
+and keeps one shared target registry. The two attack modes remain
+one keypress away.
+
+  01  Engagement Console   - killchain wizards, target registry, timeline
+  02  ATTACK WITHOUT MONITOR MODE
+  03  ATTACK WITH MONITOR MODE
+  04  Workspaces           - create/resume named engagements
+  05  Report / Results
+  06  Setup & Interface
+  07  Help
 """
 from open80211.core import ui
 from open80211.core.config import CONFIG, is_linux, require_privileges
@@ -17,6 +30,12 @@ def choose_interface() -> bool:
     CONFIG.interface = name
     ui.ok(f"Using interface: {name}  MAC={get_mac(name)}  IP={get_ip(name)}")
     return True
+
+
+def ensure_interface() -> bool:
+    if CONFIG.interface or choose_interface():
+        return True
+    return False
 
 
 def setup_menu() -> None:
@@ -37,12 +56,12 @@ def setup_menu() -> None:
             if not is_linux():
                 ui.warn("Monitor mode requires Linux.")
                 continue
-            if not CONFIG.interface:
-                choose_interface()
+            if not ensure_interface():
+                continue
             set_monitor_mode(CONFIG.interface, True)
         elif choice == 3:
-            if not CONFIG.interface:
-                choose_interface()
+            if not ensure_interface():
+                continue
             ch = ui.ask_int("Channel (1-13)", default=6)
             if set_channel(CONFIG.interface, ch):
                 CONFIG.channel = ch
@@ -50,8 +69,8 @@ def setup_menu() -> None:
             else:
                 ui.error("Could not set channel. Is the interface in monitor mode?")
         elif choice == 4:
-            if not CONFIG.interface:
-                choose_interface()
+            if not ensure_interface():
+                continue
             new = ui.ask("New MAC (blank = random)", default="")
             mac = new or random_mac()
             if spoof_mac(CONFIG.interface, mac):
@@ -91,22 +110,121 @@ def setup_menu() -> None:
                     "reaver tcpdump iw")
 
 
+# --------------------------------------------------------------------------
+# ATTACK MODE 1 : WITHOUT monitor mode
+# --------------------------------------------------------------------------
+
+def attack_without_monitor(iface: str) -> None:
+    """Everything that runs on a managed/connected interface (or no card)."""
+    while True:
+        choice = ui.menu("Attack WITHOUT Monitor Mode", [
+            "Spoofing / Identity (MAC, IP, ARP, 802.11 MAC)",
+            "MITM suite (ARP/DNS/SSL-strip/HTTPS decrypt)",
+            "LAN / Network attacks",
+            "Brute force (SSH/FTP/HTTP/Telnet/SMB)",
+            "Bluetooth attack suite (classic + BLE)",
+            "Cellular / SIM / cell-tower suite",
+            "IoT pentest suite (MQTT/UPnP/RTSP/CoAP)",
+            "Packet sniffing (managed mode)",
+        ])
+        if choice == 0:
+            return
+        if choice == 1:
+            from open80211.modules.spoof import spoof_menu
+            spoof_menu(iface)
+        elif choice == 2:
+            from open80211.modules.mitm import mitm_menu
+            mitm_menu(iface)
+        elif choice == 3:
+            from open80211.modules.lan import lan_menu
+            lan_menu(iface)
+        elif choice == 4:
+            from open80211.modules.bruteforce import brute_menu
+            brute_menu(iface)
+        elif choice == 5:
+            from open80211.modules.bluetooth import bt_menu
+            bt_menu(iface)
+        elif choice == 6:
+            from open80211.modules.cellular import cell_menu
+            cell_menu(iface)
+        elif choice == 7:
+            from open80211.modules.iot import iot_menu
+            iot_menu(iface)
+        elif choice == 8:
+            from open80211.modules.capture import interactive_capture
+            interactive_capture(iface)
+
+
+# --------------------------------------------------------------------------
+# ATTACK MODE 2 : WITH monitor mode
+# --------------------------------------------------------------------------
+
+def attack_with_monitor(iface: str) -> None:
+    """Raw 802.11 air attacks - requires monitor mode + injection adapter."""
+    if not is_linux():
+        ui.warn("Monitor-mode attacks require Linux + a monitor-capable "
+                "Wi-Fi adapter (e.g. Kali + ALFA).")
+        ui.info("On other platforms use 'Attack WITHOUT monitor mode' "
+                "for LAN/MITM/Bluetooth/cellular/IoT.")
+        return
+    ui.info("Enable monitor mode in Setup if not already active.")
+    while True:
+        choice = ui.menu("Attack WITH Monitor Mode", [
+            "Recon (scan APs & clients, wardrive)",
+            "Attack suite (deauth/floods/WPS/injection)",
+            "Evil AP / Evil twin suite",
+            "WEP suite (legacy)",
+            "Analysis (handshake/PMKID/crack/decrypt)",
+            "Capture raw 802.11 (monitor)",
+        ])
+        if choice == 0:
+            return
+        if choice == 1:
+            from open80211.modules.recon import recon_menu
+            recon_menu(iface)
+        elif choice == 2:
+            from open80211.modules.attacks import attack_menu
+            attack_menu(iface)
+        elif choice == 3:
+            from open80211.modules.evilap import evil_ap_menu
+            evil_ap_menu(iface)
+        elif choice == 4:
+            from open80211.modules.wep import wep_menu
+            wep_menu(iface)
+        elif choice == 5:
+            from open80211.modules.analysis import analysis_menu
+            analysis_menu(iface)
+        elif choice == 6:
+            from open80211.modules.capture import interactive_capture
+            interactive_capture(iface)
+
+
+# --------------------------------------------------------------------------
+# Help / docs
+# --------------------------------------------------------------------------
+
 def help_menu() -> None:
     ui.section("Help / Documentation", "How the suite is organized")
     ui.info("""
-[bold cyan]OPEN80211 WORKFLOW[/bold cyan]
-  1. Setup   -> select interface, enable monitor mode
-  2. Recon   -> discover APs + clients (2.4/5GHz, WPA3 detection), wardrive
-  3. Capture -> sniff everything (tcpdump-style), save pcaps
-  4. Attacks -> deauth, beacon/assoc/probe floods, WPS, injection test
-  5. MITM    -> ARP/DNS spoof, SSL strip, HTTPS interception, credential harvesting
-  6. Evil AP -> rogue AP (open/WPA2/WPA-EAP), captive portal, Karma/MANA
-  7. LAN     -> host discovery, port scan, DHCP attacks, LLMNR/NBT-NS/mDNS
-                poisoning + NTLMv2 capture (Responder-style)
-  8. WEP     -> fake auth, ARP replay, PRGA, RC4 decrypt (legacy)
-  9. Analysis-> handshake/PMKID capture, cracking, traffic decryption,
-                hash exports (hashcat 22000 / hccapx / cowpatty)
- 10. Report  -> HTML assessment report with findings + mitigations
+[bold cyan]ENGAGEMENT CONSOLE (recommended start)[/bold cyan]
+  One cockpit, one shared target registry, guided killchains:
+    1. Open Engagement Console -> Quick actions
+    2. Pick a killchain (WPA2 / LAN / IoT / Bluetooth)
+    3. It chains: recon -> attack -> crack -> report automatically
+  Every module also writes its findings into the shared registry, so the
+  report at the end covers the whole engagement.
+
+[bold cyan]TWO OPERATION MODES[/bold cyan]
+  ATTACK WITHOUT MONITOR MODE - works on any connected interface (or none):
+    Spoofing (MAC/IP/ARP), MITM (ARP/DNS/SSL-strip/HTTPS decrypt),
+    LAN attacks, brute force, Bluetooth, Cellular/SIM, IoT, packet sniffing.
+  ATTACK WITH MONITOR MODE   - needs Linux + monitor-mode adapter:
+    Recon, deauth/floods, WPS, evil AP / evil twin, WEP, handshake/PMKID
+    capture, cracking and WPA2 traffic decryption.
+
+[bold cyan]WORKSPACES[/bold cyan]
+  Keep each client engagement separate: create a workspace, switch/resume
+  anytime, everything (targets, captures, notes) is stored per workspace.
 
 [bold cyan]KEY TERMS[/bold cyan]
   BSSID     - AP MAC address          SSID - network name
@@ -117,6 +235,7 @@ def help_menu() -> None:
   PMF / 802.11w - management frame protection (blocks deauth)
   LLMNR/NBT-NS  - legacy name resolution that leaks NTLM hashes
   Karma/MANA    - answering every probe with a matching fake AP
+  Evil twin     - clone of a real SSID to harvest handshakes/creds
 
 [bold cyan]CRACKING VIA INDUSTRY TOOLS[/bold cyan]
   hashcat -m 22000 crack-<ssid>.hc22000 wordlist.txt
@@ -128,9 +247,11 @@ def help_menu() -> None:
 """)
 
 
+# --------------------------------------------------------------------------
+# Results / status
+# --------------------------------------------------------------------------
+
 def results_menu() -> None:
-    import os
-    from pathlib import Path
     ui.section("Session Results", str(CONFIG.session_dir))
     files = sorted(CONFIG.session_dir.glob("*"))
     if not files:
@@ -146,6 +267,10 @@ def results_menu() -> None:
             print(target.read_text(encoding="utf-8", errors="replace")[:4000])
 
 
+# --------------------------------------------------------------------------
+# Main menu
+# --------------------------------------------------------------------------
+
 def main_menu() -> None:
     ui.banner()
     ui.disclaimer()
@@ -153,63 +278,53 @@ def main_menu() -> None:
         ui.error("Exiting. Ethical use only.")
         return
     require_privileges("many features (monitor mode, injection)")
+    from open80211.core.config import bind_engagement
+    bind_engagement()
     while True:
-        label = f"Main Menu  [dim](iface: {CONFIG.interface or 'none'})[/dim]"
+        label = f"Main Menu  [dim](iface: {CONFIG.interface or 'none'} · ws: {CONFIG.run_id})[/dim]"
         choice = ui.menu(label, [
+            "Engagement Console (killchains + registry)",
+            "Attack WITHOUT monitor mode",
+            "Attack WITH monitor mode",
+            "Workspaces",
+            "Report / Session results",
             "Setup & Interface",
-            "Recon (scan APs & clients)",
-            "Capture / Tcpdump",
-            "Attack Suite",
-            "MITM Suite",
-            "Evil AP Suite",
-            "LAN / Network Suite",
-            "WEP Suite (legacy)",
-            "Analysis (crack / decrypt)",
-            "Session Results",
-            "Report Generator",
             "Help",
         ])
         if choice == 0:
             ui.ok("Goodbye. Stay legal.")
             return
         if choice == 1:
-            setup_menu()
+            from open80211.modules.engage import engage_menu
+            engage_menu(CONFIG.interface or _auto_pick())
         elif choice == 2:
-            from open80211.modules.recon import recon_menu
-            if CONFIG.interface or choose_interface():
-                recon_menu(CONFIG.interface)
+            attack_without_monitor(CONFIG.interface or _auto_pick())
         elif choice == 3:
-            from open80211.modules.capture import interactive_capture
-            if CONFIG.interface or choose_interface():
-                interactive_capture(CONFIG.interface)
+            attack_with_monitor(CONFIG.interface or _auto_pick())
         elif choice == 4:
-            from open80211.modules.attacks import attack_menu
-            if CONFIG.interface or choose_interface():
-                attack_menu(CONFIG.interface)
+            from open80211.core.workspace import workspace_menu
+            workspace_menu()
         elif choice == 5:
-            from open80211.modules.mitm import mitm_menu
-            if CONFIG.interface or choose_interface():
-                mitm_menu(CONFIG.interface)
-        elif choice == 6:
-            from open80211.modules.evilap import evil_ap_menu
-            if CONFIG.interface or choose_interface():
-                evil_ap_menu(CONFIG.interface)
-        elif choice == 7:
-            from open80211.modules.lan import lan_menu
-            if CONFIG.interface or choose_interface():
-                lan_menu(CONFIG.interface)
-        elif choice == 8:
-            from open80211.modules.wep import wep_menu
-            if CONFIG.interface or choose_interface():
-                wep_menu(CONFIG.interface)
-        elif choice == 9:
-            from open80211.modules.analysis import analysis_menu
-            if CONFIG.interface or choose_interface():
-                analysis_menu(CONFIG.interface)
-        elif choice == 10:
-            results_menu()
-        elif choice == 11:
             from open80211.modules.report import report_menu
             report_menu()
-        elif choice == 12:
+        elif choice == 6:
+            setup_menu()
+        elif choice == 7:
             help_menu()
+
+
+def _auto_pick() -> str:
+    """Best-effort default interface for modules that need one."""
+    try:
+        ifaces = list_interfaces()
+        for i in ifaces:
+            if i.get("type") == "wireless":
+                CONFIG.interface = i["name"]
+                return i["name"]
+        for i in ifaces:
+            if i.get("name") != "lo":
+                CONFIG.interface = i["name"]
+                return i["name"]
+    except Exception:
+        pass
+    return ""

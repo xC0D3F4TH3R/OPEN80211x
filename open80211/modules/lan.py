@@ -23,6 +23,7 @@ from collections import defaultdict
 from open80211.core import ui
 from open80211.core.config import CONFIG
 from open80211.core import netutils as nu
+from open80211.core.targets import add_host, add_cred, log_event
 
 try:
     from scapy.all import sendp, srp, sr1, Ether, ARP, IP, TCP, ICMP, Dot11, conf
@@ -72,6 +73,9 @@ def arp_discover(iface: str, subnet: str = "", timeout: float = 2.0) -> list:
 
     for ip, mac in sorted(ip_mac.items()):
         hosts.append({"ip": ip, "mac": mac, "vendor": nu.get_oui(mac)})
+    for h in hosts:
+        add_host(h)
+    log_event("recon", f"ARP sweep found {len(hosts)} hosts")
     ui.ok(f"Found {len(hosts)} hosts.")
     return hosts
 
@@ -495,6 +499,9 @@ class ResponderLite:
         else:
             ui.warn(f"[NTLMv1] {dom}\\{user} @ {peer} (no offline crack payload)")
         self.captured.append(entry)
+        add_cred({"protocol": "NTLMv2" if v2 else "NTLMv1",
+                  "data": f"{dom}\\{user}@{peer} ch={challenge.hex()}",
+                  "src": peer})
         CONFIG.save("responder_captures", self.captured)
 
 

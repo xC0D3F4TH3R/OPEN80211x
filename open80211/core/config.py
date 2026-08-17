@@ -56,6 +56,12 @@ class Config:
 CONFIG = Config()
 
 
+def bind_engagement():
+    """Bind the global target store to the active session dir."""
+    from open80211.core.targets import bind_targets
+    bind_targets()
+
+
 def is_root() -> bool:
     """True if running with sufficient privileges (root/admin)."""
     if os.name == "posix":
